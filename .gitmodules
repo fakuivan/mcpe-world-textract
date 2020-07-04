@@ -1,0 +1,9 @@
+[submodule "args"]
+	path = args
+	url = https://github.com/Taywee/args.git
+[submodule "leveldb-mcpe"]
+	path = leveldb-mcpe
+	url = https://github.com/Mojang/leveldb-mcpe.git
+[submodule "json"]
+	path = json
+	url = https://github.com/nlohmann/json.git
