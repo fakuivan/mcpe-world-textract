@@ -24,6 +24,27 @@
             ],
             "preLaunchTask": "Build project (Debug)",
             "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "g++ - Build and debug MAPS",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/maps-codec-debug",
+            "args": [ "-d", "./maps_encoded.txt", "/dev/stdout" ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Build MAPS (Debug)",
+            "miDebuggerPath": "/usr/bin/gdb"
         }
     ]
 }

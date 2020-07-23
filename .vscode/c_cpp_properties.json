@@ -5,7 +5,8 @@
             "includePath": [
                 "${workspaceFolder}",
                 "${workspaceFolder}/leveldb-mcpe/include",
-                "${workspaceFolder}/json/single_include"
+                "${workspaceFolder}/json/single_include",
+                "${workspaceFolder}/cppcodec/cppcodec"
             ],
             "defines": [ "DLLX=" ],
             "compilerPath": "/usr/bin/gcc",

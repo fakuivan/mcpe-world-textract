@@ -8,6 +8,7 @@
                 "-s",
                 "clean",
                 "main-debug",
+                "maps-codec-debug",
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
@@ -19,7 +20,24 @@
                 "kind": "build",
                 "isDefault": true
             }
-        }
+        },
+        {
+            "type": "shell",
+            "label": "Build MAPS (Debug)",
+            "command": "make",
+            "args": [
+                "-s",
+                "clean",
+                "maps-codec-debug",
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+        "group": "build"
+        },
     ],
     "version": "2.0.0"
 }
