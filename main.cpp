@@ -13,13 +13,19 @@ namespace fs = std::experimental::filesystem;
 namespace ldb = leveldb;
 using json = nlohmann::json;
 
+// Sources:
+// * https://github.com/BluCodeGH/bedrock/blob/94f680cc0abf6316e00120f1b98bb137a541419e/bedrock/leveldb.py#L138-L148
+// * https://github.com/Podshot/MCEdit-Unified/blob/3e0b25899a63f4787115476b07db144c6d376b54/pymclevel/leveldb.py#L996-L1001
+
 ldb::Options mcpe_db_options()
 {
     ldb::Options options;
     options.filter_policy = ldb::NewBloomFilterPolicy(10);
     options.write_buffer_size = 4 * 1024 * 1024;
-    options.block_cache = leveldb::NewLRUCache(40 * 1024 * 1024);
+    options.block_cache = leveldb::NewLRUCache(8 * 1024 * 1024);
     options.compressors[0] = new ldb::ZlibCompressor();
+    options.block_size = 163840;
+    options.max_open_files = 1000;
     return options;
 }
 
