@@ -112,6 +112,12 @@ json ldb_to_json(/*const */leveldb::DB& db) {
         auto evalue = maps::encode(it->value().ToString());
         root += json::array({ekey, evalue});
     }
+    try {
+        LevelDBStatusError(it->status()).throw_if();
+    } catch (LevelDBStatusError e) {
+        throw ConversionError(std::string(
+            "Failed to read from database: ") + e.what());
+    }
     return root;
 }
 
@@ -164,7 +170,15 @@ int main(int argc, const char **argv)
                       << e.what() << std::endl;
             return 1;
         }
-        auto json_root = ldb_to_json(*db);
+        json json_root;
+        try {
+            json_root = ldb_to_json(*db);
+        } catch (ConversionError e) {
+            std::cerr
+                << "Failed to convert saves db to json: "
+                << e.what() << std::endl;
+                return 1;
+        }
         out_stream << json_root.dump(4) << std::endl;
     } else if (fs::is_directory(out)) {
         std::ifstream in_json(in);
