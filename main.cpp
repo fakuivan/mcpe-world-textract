@@ -6,6 +6,7 @@
 #include <leveldb/filter_policy.h>
 #include <leveldb/cache.h>
 #include <leveldb/zlib_compressor.h>
+#include <leveldb/snappy_compressor.h>
 #include <nlohmann/json.hpp>
 #include "maps.hpp"
 
@@ -23,7 +24,10 @@ ldb::Options mcpe_db_options()
     options.filter_policy = ldb::NewBloomFilterPolicy(10);
     options.write_buffer_size = 4 * 1024 * 1024;
     options.block_cache = leveldb::NewLRUCache(8 * 1024 * 1024);
+    // do we need to free these?
     options.compressors[0] = new ldb::ZlibCompressor();
+    options.compressors[1] = new ldb::SnappyCompressor();
+    options.compressors[2] = new ldb::ZlibCompressorRaw();
     options.block_size = 163840;
     options.max_open_files = 1000;
     return options;
