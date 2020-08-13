@@ -57,7 +57,7 @@ int main(int argc, const char** argv) {
         out << (do_decode ?
                     maps::decode(in_iter, eof) :
                     maps::encode(in_iter, eof)
-                    ).str();
+                    );
     } catch(maps::DecodingError e) {
         std::cerr << "Failed to process file: "
                   << e.what() << std::endl;

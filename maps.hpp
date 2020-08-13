@@ -39,9 +39,11 @@ constexpr char block_open = '{';
 constexpr char block_close = '}';
 
 template<typename It>
-std::ostringstream encode(It it, It end) {
-    std::ostringstream output;
-    std::string blob_buffer;
+void encode(It it, It end,
+            std::string &output_buffer,
+            std::string &blob_buffer,
+            std::string &base64e_buffer) {
+    output_buffer.clear();
     for (; it != end; ++it) {
         const char& c = *it;
         const bool char_is_bin = is_binary(c);
@@ -50,40 +52,56 @@ std::ostringstream encode(It it, It end) {
             blob_buffer.push_back(c);
             continue;
         } else if (buffer_waiting) {
-            output << block_open <<
-                      base64::encode(blob_buffer) <<
-                      block_close;
+            base64::encode(base64e_buffer, blob_buffer);
+            output_buffer.push_back(block_open);
+            output_buffer.append(base64e_buffer);
+            output_buffer.push_back(block_close);
             blob_buffer.clear();
         }
         if (c == block_open || c == block_close)
-            output << c;
-        output << c;
+            output_buffer.push_back(c);
+        output_buffer.push_back(c);
     }
     if (!blob_buffer.empty()) {
-        output << block_open <<
-                  base64::encode(blob_buffer) <<
-                  block_close;
+        base64::encode(base64e_buffer, blob_buffer);
+        output_buffer.push_back(block_open);
+        output_buffer.append(base64e_buffer);
+        output_buffer.push_back(block_close);
     }
-    return output;
+}
+
+template<typename It>
+std::string encode(It it, It end) {
+    std::string output_buffer;
+    std::string blob_buffer;
+    std::string base64e_buffer;
+    encode(it, end, output_buffer,
+        blob_buffer, base64e_buffer);
+    return output_buffer;
 }
 
 std::string encode(const std::string& input) {
-    return encode(input.begin(), input.end()).str();
+    return encode(input.begin(), input.end());
 }
 
 // Reads a binary blob's contents starting at ``it``
 // advances ``it`` until the closing bracket
 template<typename It>
-std::string parse_blob(It& it, const It& end) {
-    std::ostringstream blob;
-    if (it != end && *it == block_open)
+void parse_blob(It& it, const It& end,
+                std::string &read_buffer,
+                std::string &out_buffer,
+                std::string &base64d_buffer) {
+    read_buffer.clear();
+    if (it != end && *it == block_open) {
         // This isn't a blob, it's an escape sequence
-        return std::string(1, block_open);
+        out_buffer.push_back(block_open);
+        return;
+    }
     if (it != end && *it == block_close)
         throw DecodingError(
             "Empty base64 blocks are not allowed");
     while (it != end && is_base64_char(*it))
-        blob << *(it++);
+        read_buffer.push_back(*(it++));
     if (it == end)
         throw DecodingError(
             "base64 block ended prematurely, "
@@ -92,19 +110,28 @@ std::string parse_blob(It& it, const It& end) {
         throw DecodingError(
             "Only base64 chars are allowed inside "
             "base64 blocks.");
-    std::vector<uint8_t> decoded = base64::decode(
-        blob.str());
-    return std::string(decoded.begin(), decoded.end());
+    // TODO: Check that this writes to the end of the buffer
+    base64::decode(base64d_buffer, read_buffer);
+    out_buffer.append(base64d_buffer);
 }
 
 template<typename It>
-std::ostringstream decode(It it, It end) {
-    std::ostringstream output;
+auto parse_blob(It& it, const It& end) {
+    std::string buffer;
+    return parse_blob(it, end, buffer);
+}
+
+template<typename It>
+void decode(It it, It end,
+            std::string &output_buffer,
+            std::string &blob_buffer,
+            std::string &base64d_buffer) {
+    output_buffer.clear();
     for (;it != end; ++it) {
         const char& c = *it;
         if (c == block_open) {
-            auto parsed = parse_blob(++it, end);
-            output << parsed;
+            parse_blob(++it, end, blob_buffer,
+                output_buffer, base64d_buffer);
             continue;
         }
         if (c == block_close &&
@@ -117,15 +144,22 @@ std::ostringstream decode(It it, It end) {
             throw DecodingError(
                 "Non printable literals are not allowed."
             );
-        output << c;
+        output_buffer.push_back(c);
     }
-    output.flush();
-    return output;
+}
+
+template<typename It>
+std::string decode(It it, It end) {
+    std::string output_buffer;
+    std::string blob_buffer;
+    std::string base64d_buffer;
+    decode<It>(it, end, output_buffer,
+        blob_buffer, base64d_buffer);
+    return output_buffer;
 }
 
 std::string decode(const std::string& input) {
-    return decode(
-        std::begin(input), std::end(input)).str();
+    return decode(std::begin(input), std::end(input));
 }
 
 }

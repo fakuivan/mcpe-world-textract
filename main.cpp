@@ -8,6 +8,7 @@
 #include <leveldb/zlib_compressor.h>
 #include <leveldb/snappy_compressor.h>
 #include <nlohmann/json.hpp>
+#include <functional>
 #include "maps.hpp"
 
 namespace fs = std::experimental::filesystem;
@@ -79,6 +80,13 @@ auto db_open(fs::path path, ldb::Options options)
 }
 
 void json_to_ldb(leveldb::DB& db, const json& input) {
+    std::string blob_buff, base64d_buff;
+    std::string key_buff, value_buff;
+    auto my_decode = [&blob_buff, &base64d_buff](
+        const std::string& input, std::string& out_buff){
+            maps::decode(input.begin(), input.end(),
+                out_buff, blob_buff, base64d_buff);
+        };
     if (!input.is_array())
         throw ConversionError(
             "Top level json object must be an array");
@@ -94,10 +102,9 @@ void json_to_ldb(leveldb::DB& db, const json& input) {
             throw ConversionError(
                 "Pairs on the top level array must "
                 "contain two strings");
-        std::string dkey, dvalue;
         try {
-            dkey = maps::decode(key.get<std::string>());
-            dvalue = maps::decode(value.get<std::string>());
+            my_decode(key.get<std::string>(), key_buff);
+            my_decode(value.get<std::string>(), value_buff);
         } catch (maps::DecodingError e) {
             throw ConversionError(std::string(
                 "Pairs on top level array must be valid "
@@ -105,7 +112,8 @@ void json_to_ldb(leveldb::DB& db, const json& input) {
         }
         try {
             LevelDBStatusError(
-                db.Put(write_options, dkey, dvalue)).throw_if();
+                db.Put(write_options, key_buff, value_buff)
+                ).throw_if();
         } catch (LevelDBStatusError e) {
             throw ConversionError(std::string(
                 "Failed to write to database: ") + e.what());
@@ -114,13 +122,22 @@ void json_to_ldb(leveldb::DB& db, const json& input) {
 }
 
 json ldb_to_json(/*const */leveldb::DB& db) {
+    std::string blob_buffer, base64e_buffer;
+    std::string key_buffer, value_buffer;
     std::unique_ptr<ldb::Iterator> it(
         db.NewIterator(mcpe_db_read_options()));
+    auto my_encoder = [&blob_buffer, &base64e_buffer](
+        const ldb::Slice& slice, std::string& output
+        ) {
+            maps::encode(
+                slice.data(), slice.data() + slice.size(),
+                output, blob_buffer, base64e_buffer);
+        };
     auto root = json::array({});
     for (it->SeekToFirst(); it->Valid(); it->Next()) {
-        auto ekey = maps::encode(it->key().ToString());
-        auto evalue = maps::encode(it->value().ToString());
-        root += json::array({ekey, evalue});
+        my_encoder(it->key(), key_buffer);
+        my_encoder(it->value(), value_buffer);
+        root += json::array({key_buffer, value_buffer});
     }
     try {
         LevelDBStatusError(it->status()).throw_if();
