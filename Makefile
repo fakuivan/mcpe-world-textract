@@ -7,7 +7,7 @@ opts = $(maps_deps) $(leveldb_deps) $(json_deps) $(deps)
 all: main main-debug maps-codec-debug
 
 main:
-	g++ main.cpp -Wall $(opts) -o $@
+	g++ main.cpp -Wall $(opts) -O3 -o $@
 
 main-debug:
 	g++ main.cpp -Wall $(opts) -g -o $@
