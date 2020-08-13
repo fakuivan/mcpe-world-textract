@@ -38,6 +38,8 @@ constexpr bool is_base64_char(const char& c) {
 constexpr char block_open = '{';
 constexpr char block_close = '}';
 
+// Encoding
+
 template<typename It>
 void encode(It it, It end,
             std::string &output_buffer,
@@ -70,19 +72,45 @@ void encode(It it, It end,
     }
 }
 
-template<typename It>
-std::string encode(It it, It end) {
-    std::string output_buffer;
+// Helper objects
+
+class cached_encoder {
+private:
     std::string blob_buffer;
     std::string base64e_buffer;
-    encode(it, end, output_buffer,
-        blob_buffer, base64e_buffer);
-    return output_buffer;
+    std::string out_buffer;
+public:
+    template<typename It>
+    void encode(It begin, It end, std::string& out_buff) {
+        ::maps::encode(begin, end, out_buff,
+            blob_buffer, base64e_buffer);
+    }
+    void encode(const std::string& binary,
+                std::string& encoded) {
+        this->encode(binary.begin(), binary.end(), encoded);
+    }
+    template<typename It>
+    std::string encode(It begin, It end) {
+        this->encode(begin, end, out_buffer);
+        return out_buffer;
+    }
+    std::string encode(const std::string& binary) {
+        return this->encode(binary.begin(), binary.end());
+    }
+};
+
+template<typename It>
+std::string encode(It it, It end) {
+    cached_encoder encoder;
+    return encoder.encode(it, end);
 }
 
 std::string encode(const std::string& input) {
-    return encode(input.begin(), input.end());
+    cached_encoder encoder;
+    return encoder.encode(input);
 }
+
+// Decoding
 
 // Reads a binary blob's contents starting at ``it``
 // advances ``it`` until the closing bracket
@@ -116,12 +144,6 @@ void parse_blob(It& it, const It& end,
 }
 
 template<typename It>
-auto parse_blob(It& it, const It& end) {
-    std::string buffer;
-    return parse_blob(it, end, buffer);
-}
-
-template<typename It>
 void decode(It it, It end,
             std::string &output_buffer,
             std::string &blob_buffer,
@@ -148,18 +170,42 @@ void decode(It it, It end,
     }
 }
 
-template<typename It>
-std::string decode(It it, It end) {
-    std::string output_buffer;
+// Helper objects
+
+class cached_decoder {
+private:
     std::string blob_buffer;
     std::string base64d_buffer;
-    decode<It>(it, end, output_buffer,
-        blob_buffer, base64d_buffer);
-    return output_buffer;
+    std::string out_buffer;
+public:
+    template<typename It>
+    void decode(It begin, It end, std::string& out_buff) {
+        ::maps::decode(begin, end, out_buff,
+            blob_buffer, base64d_buffer);
+    }
+    void decode(const std::string& encoded,
+                std::string& decoded) {
+        this->decode(encoded.begin(), encoded.end(), decoded);
+    }
+    template<typename It>
+    std::string decode(It begin, It end) {
+        this->decode(begin, end, out_buffer);
+        return out_buffer;
+    }
+    std::string decode(const std::string& encoded) {
+        return this->decode(encoded.begin(), encoded.end());
+    }
+};
+
+template<typename It>
+std::string decode(It it, It end) {
+    cached_decoder decoder;
+    return decoder.decode(it, end);
 }
 
 std::string decode(const std::string& input) {
-    return decode(std::begin(input), std::end(input));
+    cached_decoder decoder;
+    return decoder.decode(input);
 }
 
 }

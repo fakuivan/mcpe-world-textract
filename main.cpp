@@ -80,13 +80,8 @@ auto db_open(fs::path path, ldb::Options options)
 }
 
 void json_to_ldb(leveldb::DB& db, const json& input) {
-    std::string blob_buff, base64d_buff;
+    maps::cached_decoder decoder;
     std::string key_buff, value_buff;
-    auto my_decode = [&blob_buff, &base64d_buff](
-        const std::string& input, std::string& out_buff){
-            maps::decode(input.begin(), input.end(),
-                out_buff, blob_buff, base64d_buff);
-        };
     if (!input.is_array())
         throw ConversionError(
             "Top level json object must be an array");
@@ -103,8 +98,8 @@ void json_to_ldb(leveldb::DB& db, const json& input) {
                 "Pairs on the top level array must "
                 "contain two strings");
         try {
-            my_decode(key.get<std::string>(), key_buff);
-            my_decode(value.get<std::string>(), value_buff);
+            decoder.decode(key.get<std::string>(), key_buff);
+            decoder.decode(value.get<std::string>(), value_buff);
         } catch (maps::DecodingError e) {
             throw ConversionError(std::string(
                 "Pairs on top level array must be valid "
@@ -122,21 +117,20 @@ void json_to_ldb(leveldb::DB& db, const json& input) {
 }
 
 json ldb_to_json(/*const */leveldb::DB& db) {
-    std::string blob_buffer, base64e_buffer;
+    maps::cached_encoder encoder;
     std::string key_buffer, value_buffer;
     std::unique_ptr<ldb::Iterator> it(
         db.NewIterator(mcpe_db_read_options()));
-    auto my_encoder = [&blob_buffer, &base64e_buffer](
+    auto slice_encoder = [&encoder](
         const ldb::Slice& slice, std::string& output
         ) {
-            maps::encode(
-                slice.data(), slice.data() + slice.size(),
-                output, blob_buffer, base64e_buffer);
+            encoder.encode(slice.data(),
+                slice.data() + slice.size(), output);
         };
     auto root = json::array({});
     for (it->SeekToFirst(); it->Valid(); it->Next()) {
-        my_encoder(it->key(), key_buffer);
-        my_encoder(it->value(), value_buffer);
+        slice_encoder(it->key(), key_buffer);
+        slice_encoder(it->value(), value_buffer);
         root += json::array({key_buffer, value_buffer});
     }
     try {
